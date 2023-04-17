@@ -1,28 +1,32 @@
 const events = require('./events')
 const methods = require('./methods')
 let users = {}
-let chatsList = ['Community']
+let chatsList = ['ElloGPT']
 let communityChat = methods.createChat()
 let chats = [communityChat]
 
 module.exports = io => socket => {
 
     socket.on(events.IS_USER, (nickname, cb) => {
+        console.log("events.IS_USER called", nickname)
         methods.isUser(users, nickname) ? cb({ isUser: true, user: null }) :
             cb({ isUser: false, user: methods.createUser(nickname, socket.id) })
     })
 
     socket.on(events.NEW_USER, user => {
+        console.log("events.NEW_USER called", user)
         users = methods.addUsers(users, user)
         socket.user = user
         io.emit(events.NEW_USER, { newUsers: users })
     })
 
     socket.on(events.INIT_CHATS, cb => {
+        console.log("events.INIT_CHATS called")
         cb(chats)
     })
 
     socket.on(events.LOGOUT, () => {
+        console.log("events.LOGOUT called")
         if (socket.user) {
             users = methods.delUser(users, socket.user.nickname)
             io.emit(events.LOGOUT, { newUsers: users, outUser: socket.user.nickname })
@@ -30,6 +34,7 @@ module.exports = io => socket => {
     })
 
     socket.on('disconnect', () => {
+        console.log("events.disconnect called")
         if (socket.user) {
             users = methods.delUser(users, socket.user.nickname)
             io.emit(events.LOGOUT, { newUsers: users, outUser: socket.user.nickname })
@@ -37,6 +42,7 @@ module.exports = io => socket => {
     })
 
     socket.on(events.MESSAGE_SEND, ({ channel, msg }) => {
+        console.log("events.MESSAGE_SEND called", { channel, msg })
         if (socket.user) {
             let message = methods.createMessage(msg, socket.user.nickname)
             io.emit(events.MESSAGE_SEND, ({ channel, message }))
@@ -44,12 +50,14 @@ module.exports = io => socket => {
     })
 
     socket.on(events.TYPING, ({ channel, isTyping }) => {
+        console.log("events.TYPING called", { channel, isTyping })
         if (socket.user) {
             socket.user && io.emit(events.TYPING, { channel, isTyping, sender: socket.user.nickname })
         }
     })
 
     socket.on(events.P_MESSAGE_SEND, ({ receiver, msg }) => {
+        console.log("events.P_MESSAGE_SEND called", { receiver, msg })
         if (socket.user) {
             let sender = socket.user.nickname
             let message = methods.createMessage(msg, sender)
@@ -59,6 +67,7 @@ module.exports = io => socket => {
     })
 
     socket.on(events.P_TYPING, ({ receiver, isTyping }) => {
+        console.log("events.P_TYPING called", { receiver, isTyping })
         if (socket.user) {
             let sender = socket.user.nickname
             socket.to(receiver).emit(events.P_TYPING, { channel: sender, isTyping })
@@ -66,6 +75,7 @@ module.exports = io => socket => {
     })
 
     socket.on(events.CHECK_CHANNEL, ({ channelName, channelDescription }, cb) => {
+        console.log("events.CHECK_CHANNEL called", { channelName, channelDescription })
         if (methods.isChannel(channelName, chatsList)) {
             cb(true)
         } else {
