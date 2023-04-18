@@ -1,8 +1,9 @@
 const events = require('./events')
 const methods = require('./methods')
+const ELLOGPT = "ellogpt"
 let users = {}
 let chatsList = ['ElloGPT']
-let communityChat = methods.createChat()
+let communityChat = methods.createChat({name: "ElloGPT", description: "Private room" })
 let chats = [communityChat]
 
 module.exports = io => socket => {
@@ -14,10 +15,12 @@ module.exports = io => socket => {
     })
 
     socket.on(events.NEW_USER, user => {
-        console.log("events.NEW_USER called", user)
         users = methods.addUsers(users, user)
+        const private_bot = `${ELLOGPT.toLowerCase()}_${user.nickname.toLowerCase()}`
+        users = methods.addUsers(users, { nickname: private_bot, socketId: private_bot })
         socket.user = user
         io.emit(events.NEW_USER, { newUsers: users })
+       
     })
 
     socket.on(events.INIT_CHATS, cb => {
@@ -63,6 +66,17 @@ module.exports = io => socket => {
             let message = methods.createMessage(msg, sender)
             socket.to(receiver.socketId).emit(events.P_MESSAGE_SEND, { channel: sender, message })
             socket.emit(events.P_MESSAGE_SEND, { channel: receiver.nickname, message })
+        }
+    })
+
+    socket.on(events.BOT_MESSAGE_SEND, ({ receiver, msg }) => {
+        console.log("events.BOT_MESSAGE_SEND called", { receiver, msg })
+        if (socket.user) {
+            let sender = socket.user.nickname
+            const private_bot = `${ELLOGPT.toLowerCase()}_${sender.toLowerCase()}`
+            let message = methods.createMessage(msg, private_bot)
+            // socket.to(receiver.socketId).emit(events.P_MESSAGE_SEND, { channel: private_bot, message })
+            socket.emit(events.P_MESSAGE_SEND, { channel: private_bot, message })
         }
     })
 
