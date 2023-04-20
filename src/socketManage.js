@@ -2,25 +2,27 @@ const events = require('./events')
 const methods = require('./methods')
 const ELLOGPT = "ellogpt"
 let users = {}
-let chatsList = ['ElloGPT']
-let communityChat = methods.createChat({name: "ElloGPT", description: "Private room" })
+let chatsList = ['Public_Channel']
+let communityChat = methods.createChat({ name: "ElloGPT Channel", description: "Public room" })
 let chats = [communityChat]
 
 module.exports = io => socket => {
 
     socket.on(events.IS_USER, (nickname, cb) => {
         console.log("events.IS_USER called", nickname)
-        methods.isUser(users, nickname) ? cb({ isUser: true, user: null }) :
-            cb({ isUser: false, user: methods.createUser(nickname, socket.id) })
+        if (methods.isUser(users, nickname)) return cb({ isUser: true, user: null })
+        cb({ isUser: false, user: methods.createUser(nickname, socket.id) })
     })
 
     socket.on(events.NEW_USER, user => {
-        users = methods.addUsers(users, user)
         const private_bot = `${ELLOGPT.toLowerCase()}_${user.nickname.toLowerCase()}`
-        users = methods.addUsers(users, { nickname: private_bot, socketId: private_bot })
+        const bot_user = methods.createUser(private_bot, private_bot)
+        users = methods.addUsers(users, bot_user)
+
+        users = methods.addUsers(users, user)
         socket.user = user
         io.emit(events.NEW_USER, { newUsers: users })
-       
+
     })
 
     socket.on(events.INIT_CHATS, cb => {
