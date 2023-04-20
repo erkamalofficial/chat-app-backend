@@ -34,6 +34,8 @@ module.exports = io => socket => {
         console.log("events.LOGOUT called")
         if (socket.user) {
             users = methods.delUser(users, socket.user.nickname)
+            const private_bot = `${ELLOGPT.toLowerCase()}_${nickname.toLowerCase()}`
+            users = methods.delUser(users, private_bot)
             io.emit(events.LOGOUT, { newUsers: users, outUser: socket.user.nickname })
         }
     })
@@ -41,6 +43,7 @@ module.exports = io => socket => {
     socket.on('disconnect', () => {
         console.log("events.disconnect called")
         if (socket.user) {
+            users = methods.delUser(users, socket.user.nickname)
             users = methods.delUser(users, socket.user.nickname)
             io.emit(events.LOGOUT, { newUsers: users, outUser: socket.user.nickname })
         }
