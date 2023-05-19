@@ -1,4 +1,4 @@
-const { MySqlQuery } = require("../../db/MysqlQuery");
+const { MySqlQuery } = require("../../db/MySqlQuery.js");
 
 
 

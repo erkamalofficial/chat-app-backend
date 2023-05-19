@@ -1,4 +1,4 @@
-const { MySqlQuery } = require("../../db/MysqlQuery.js")
+const { MySqlQuery } = require("../../db/MySqlQuery.js")
 const { QueryHelper } = require("../../db/QueryHelper.js")
 const uuid = require('uuid')
 
@@ -66,12 +66,12 @@ const getActiveUsersChats = async (user_id) => {
 
 
         let user_bot_chats = []
-        const user_bots = await getUsersBots()
+        const user_bots = await getUsersBots(user_id)
         for (let i = 0; i < user_bots.length; i++) {
-            const messages = await MySqlQuery(`SELECT * FROM ellotdb.messages where sender_id='${user_id}' AND receiver_id='${user_bots[i].user_id}'`);
+            const messages = await MySqlQuery(`SELECT * FROM ellotdb.messages where sender_id='${user_id}' AND receiver_id='${user_bots[i].bot_id}'`);
             user_bot_chats.push({
-                chat_id: user_bots[i].user_id,
-                channel_name: user_bots[i].username,
+                chat_id: user_bots[i].bot_id,
+                channel_name: user_bots[i].bot_name,
                 messages: messages,
                 is_typing: false
             })
