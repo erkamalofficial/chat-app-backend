@@ -1,4 +1,6 @@
 const events = require('./events')
+const { createNewMessage } = require('./helpers/db')
+const { getUserByUsername } = require('./helpers/db/userTableQueries')
 const methods = require('./methods')
 const ELLOGPT = "ellogpt"
 let users = {}
@@ -6,11 +8,23 @@ let chatsList = ['Public_Channel']
 let communityChat = methods.createChat({ name: "ElloGPT Channel", description: "Public room" })
 let chats = [communityChat]
 
+const messageType = {
+    user: 'user',
+    bot: 'bot',
+    channel: 'channel',
+};
+
 module.exports = io => socket => {
 
-    socket.on(events.IS_USER, (nickname, cb) => {
+    socket.on(events.IS_USER, async (nickname, cb) => {
         console.log("events.IS_USER called", nickname)
+        const isUser = await getUserByUsername(nickname)
+        if (isUser) {
+            await getUserByUsername(nickname)
+            return cb({ isUser: false, user: { nickname: isUser.username, socketId: socket.id } })
+        }
         if (methods.isUser(users, nickname)) return cb({ isUser: true, user: null })
+        // if (methods.isUser(users, nickname)) return cb({ isUser: true, user: null })
         cb({ isUser: false, user: methods.createUser(nickname, socket.id) })
     })
 
@@ -20,6 +34,7 @@ module.exports = io => socket => {
         users = methods.addUsers(users, bot_user)
 
         users = methods.addUsers(users, user)
+        console.log('users======> ', users)
         socket.user = user
         io.emit(events.NEW_USER, { newUsers: users })
 
@@ -64,12 +79,14 @@ module.exports = io => socket => {
         }
     })
 
-    socket.on(events.P_MESSAGE_SEND, ({ receiver, msg }) => {
-        console.log("events.P_MESSAGE_SEND called", { receiver, msg })
+    socket.on(events.P_MESSAGE_SEND, async ({ receiver, msg }) => { //working.....
+        // console.log("events.P_MESSAGE_SEND called", { receiver, msg })
         if (socket.user) {
-            let sender = socket.user.nickname
-            let message = methods.createMessage(msg, sender)
-            socket.to(receiver.socketId).emit(events.P_MESSAGE_SEND, { channel: sender, message })
+            await createNewMessage({ sender: socket.user.nickname, receiver: receiver.nickname, message: msg, message_type: messageType['user'] })
+
+            console.log("events.receiver_uname called", { sender: socket.user.nickname, receiver, msg })
+            let message = methods.createMessage(msg, socket.user.nickname)
+            socket.to(receiver.socketId).emit(events.P_MESSAGE_SEND, { channel: socket.user.nickname, message })
             socket.emit(events.P_MESSAGE_SEND, { channel: receiver.nickname, message })
         }
     })

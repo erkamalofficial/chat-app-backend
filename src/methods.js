@@ -1,15 +1,15 @@
 const uuid = require('uuid')
 
-const isUser = ( users, nickname ) => nickname in users 
+const isUser = (users, nickname) => nickname in users
 
-const createUser = ( nickname, socketId ) => ({ nickname, socketId })
+const createUser = (nickname, socketId) => ({ nickname, socketId })
 
-const addUsers = ( users, user ) => {
-    users[ user.nickname ] = user
+const addUsers = (users, user) => {
+    users[user.nickname] = user
     return users
 }
 
-const createChat = ({ name='ElloGPT', description='Public room' } = {}) => ({
+const createChat = ({ name = 'ElloGPT', description = 'Public room' } = {}) => ({
     name,
     description,
     messages: [],
@@ -17,15 +17,16 @@ const createChat = ({ name='ElloGPT', description='Public room' } = {}) => ({
     typingUser: []
 })
 
-const isChannel = ( channelName, chats ) => chats.includes( channelName )
+const isChannel = (channelName, chats) => chats.includes(channelName)
 
 
-const delUser = ( users, nickname ) => {
-    delete users[ nickname ]
-    return users   
+const delUser = (users, nickname) => {
+    
+    delete users[nickname]
+    return users
 }
 
-const createMessage = ( message, sender ) => ({
+const createMessage = (message, sender) => ({
     id: uuid(),
     time: new Date(Date.now()),
     message,
