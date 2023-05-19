@@ -1,5 +1,5 @@
 const events = require('./events')
-const { createNewMessage } = require('./helpers/db')
+const { createNewMessage, getAllActiveUsers, getUsersBots, getActiveUsersChats } = require('./helpers/db')
 const { getUserByUsername } = require('./helpers/db/userTableQueries')
 const methods = require('./methods')
 const ELLOGPT = "ellogpt"
@@ -21,28 +21,39 @@ module.exports = io => socket => {
         const isUser = await getUserByUsername(nickname)
         if (isUser) {
             await getUserByUsername(nickname)
-            return cb({ isUser: false, user: { nickname: isUser.username, socketId: socket.id } })
+            return cb({ isUser: false, user: { ...isUser, socketId: socket.id } })
         }
         if (methods.isUser(users, nickname)) return cb({ isUser: true, user: null })
         // if (methods.isUser(users, nickname)) return cb({ isUser: true, user: null })
         cb({ isUser: false, user: methods.createUser(nickname, socket.id) })
     })
 
-    socket.on(events.NEW_USER, user => {
-        const private_bot = `${ELLOGPT.toLowerCase()}_${user.nickname.toLowerCase()}`
-        const bot_user = methods.createUser(private_bot, private_bot)
-        users = methods.addUsers(users, bot_user)
+    socket.on(events.NEW_USER, async (user) => {
+        console.log("events.NEW_USER called")
+        try {
+            let userList = {}
+            let userBotsList = {}
+            const userBots = await getUsersBots(user.user_id)
+            userBots.map((bot) => {
+                userBotsList[bot.bot_id] = bot
+            })
+            const allUsers = await getAllActiveUsers()
+            allUsers.map((user) => {
+                userList[user.user_id] = user
+            })
 
-        users = methods.addUsers(users, user)
-        console.log('users======> ', users)
-        socket.user = user
-        io.emit(events.NEW_USER, { newUsers: users })
-
+            socket.user = user
+            io.emit(events.NEW_USER, { userList, userBotsList })
+        } catch (error) {
+            console.log("events.IS_USER Error", error)
+        }
     })
 
-    socket.on(events.INIT_CHATS, cb => {
-        console.log("events.INIT_CHATS called")
-        cb(chats)
+    socket.on(events.INIT_CHATS, async (current_user_id, cb) => {
+        console.log("events.INIT_CHATS called", current_user_id)
+        const { user_chats, user_bot_chats } = await getActiveUsersChats(current_user_id)
+        console.log("current_user_chats +>", { user_chats, user_bot_chats })
+        cb({ user_chats, user_bot_chats })
     })
 
     socket.on(events.LOGOUT, () => {
