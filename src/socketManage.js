@@ -110,11 +110,11 @@ module.exports = io => socket => {
     })
 
     socket.on(events.BOT_MESSAGE_SEND, async ({ bot_id, msg }) => {
-        console.log("events.BOT_MESSAGE_SEND called", { receiver, msg })
+        console.log("events.BOT_MESSAGE_SEND called", { bot_id, msg })
         if (socket.user) {
             let socket_user_id = socket.user.user_id
             const message = await createNewMessage({ sender_id: bot_id, receiver_id: socket_user_id, message: msg, message_type: messageType['bot'] })
-            socket.emit(events.P_MESSAGE_SEND, { channel: bot_id, message })
+            socket.emit(events.P_MESSAGE_SEND, { channel: bot_id, message, channelType: "bot" })
         }
     })
 
