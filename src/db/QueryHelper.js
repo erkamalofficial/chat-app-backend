@@ -10,6 +10,21 @@ const QueryHelper = {
     },
     createMessageRecipientQuery: (message_id, sender_id, receiver_id) => {
         return `INSERT INTO ellotdb.message_recipient (message_id, sender_id, receiver_id, is_read) VALUES (${message_id}, '${sender_id}', '${receiver_id}', ${false})`;
+    },
+
+
+
+    getSession: (user_id) => {
+        return `SELECT * FROM ellotdb.sessions WHERE user_id='${user_id}'`;
+    },
+    createSession: (user_id, socket_id) => {
+        return `INSERT INTO ellotdb.sessions (user_id, socket_id) VALUES ('${user_id}', '${socket_id}')`;
+    },
+    updatedSession: (user_id, socket_id) => {
+        return `UPDATE ellotdb.sessions set socket_id='${socket_id}' WHERE user_id='${user_id}' `;
+    },
+    deleteSession: (user_id) => {
+        return `DELETE FROM ellotdb.sessions  WHERE user_id='${user_id}' `;
     }
 }
 

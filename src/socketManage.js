@@ -1,5 +1,5 @@
 const events = require('./events')
-const { createNewMessage, getAllActiveUsers, getUsersBots, getActiveUsersChats } = require('./helpers/db')
+const { createNewMessage, getAllActiveUsers, getUsersBots, getActiveUsersChats, createUserSession, deleteUserSession, getUserSession } = require('./helpers/db')
 const { getUserByUsername } = require('./helpers/db/userTableQueries')
 const methods = require('./methods')
 const ELLOGPT = "ellogpt"
@@ -21,6 +21,7 @@ module.exports = io => socket => {
         const isUser = await getUserByUsername(nickname)
         if (isUser) {
             await getUserByUsername(nickname)
+            await createUserSession(isUser.user_id, socket.id)
             return cb({ isUser: false, user: { ...isUser, socketId: socket.id } })
         }
         if (methods.isUser(users, nickname)) return cb({ isUser: true, user: null })
@@ -43,6 +44,7 @@ module.exports = io => socket => {
             })
 
             socket.user = user
+
             io.emit(events.NEW_USER, { userList, userBotsList })
         } catch (error) {
             console.log("events.IS_USER Error", error)
@@ -52,7 +54,7 @@ module.exports = io => socket => {
     socket.on(events.INIT_CHATS, async (current_user_id, cb) => {
         console.log("events.INIT_CHATS called", current_user_id)
         const { user_chats, user_bot_chats } = await getActiveUsersChats(current_user_id)
-        console.log("current_user_chats +>", { user_chats, user_bot_chats })
+
         cb({ user_chats, user_bot_chats })
     })
 
@@ -66,9 +68,10 @@ module.exports = io => socket => {
         }
     })
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         console.log("events.disconnect called")
         if (socket.user) {
+            await deleteUserSession(socket.user.user_id)
             users = methods.delUser(users, socket.user.nickname)
             users = methods.delUser(users, socket.user.nickname)
             io.emit(events.LOGOUT, { newUsers: users, outUser: socket.user.nickname })
@@ -90,26 +93,28 @@ module.exports = io => socket => {
         }
     })
 
-    socket.on(events.P_MESSAGE_SEND, async ({ receiver, msg }) => { //working.....
-        // console.log("events.P_MESSAGE_SEND called", { receiver, msg })
-        if (socket.user) {
-            await createNewMessage({ sender: socket.user.nickname, receiver: receiver.nickname, message: msg, message_type: messageType['user'] })
+    socket.on(events.P_MESSAGE_SEND, async ({ receiver, msg, channelType }) => { //working.....
+        console.log("events.P_MESSAGE_SEND called", channelType)
+        if (socket.user && receiver) {
+            const message = await createNewMessage({ sender_id: socket.user.user_id, receiver_id: channelType === "bot" ? receiver.bot_id : receiver.user_id, message: msg, message_type: messageType['user'] })
 
-            console.log("events.receiver_uname called", { sender: socket.user.nickname, receiver, msg })
-            let message = methods.createMessage(msg, socket.user.nickname)
-            socket.to(receiver.socketId).emit(events.P_MESSAGE_SEND, { channel: socket.user.nickname, message })
-            socket.emit(events.P_MESSAGE_SEND, { channel: receiver.nickname, message })
+            socket.emit(events.P_MESSAGE_SEND, { channel: channelType === "bot" ? receiver.bot_id : receiver.user_id, message, channelType })
+
+            if (channelType === "user") {
+                const receiverSocketId = await getUserSession(receiver.user_id)
+                console.log("receiverSocketId +>", receiverSocketId)
+                socket.to(receiverSocketId).emit(events.P_MESSAGE_SEND, { channel: socket.user.user_id, message, channelType })
+            }
+
         }
     })
 
-    socket.on(events.BOT_MESSAGE_SEND, ({ receiver, msg }) => {
+    socket.on(events.BOT_MESSAGE_SEND, async ({ bot_id, msg }) => {
         console.log("events.BOT_MESSAGE_SEND called", { receiver, msg })
         if (socket.user) {
-            let sender = socket.user.nickname
-            const private_bot = `${ELLOGPT.toLowerCase()}_${sender.toLowerCase()}`
-            let message = methods.createMessage(msg, private_bot)
-            // socket.to(receiver.socketId).emit(events.P_MESSAGE_SEND, { channel: private_bot, message })
-            socket.emit(events.P_MESSAGE_SEND, { channel: private_bot, message })
+            let socket_user_id = socket.user.user_id
+            const message = await createNewMessage({ sender_id: bot_id, receiver_id: socket_user_id, message: msg, message_type: messageType['bot'] })
+            socket.emit(events.P_MESSAGE_SEND, { channel: bot_id, message })
         }
     })
 
