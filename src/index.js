@@ -17,8 +17,7 @@ const server = app.listen(PORT, () => {
 const socket_io = new Server(server, {
     allowEIO3: true,
     cors: {
-        origin: ["https://ellochatapp.vercel.app", "https://ellochatapptest.vercel.app/"],
-        credentials: true,
+        origin: "*",
     },
 })
 const socketManage = require('./socketManage')(socket_io)
